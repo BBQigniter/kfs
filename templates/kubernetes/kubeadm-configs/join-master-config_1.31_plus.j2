@@ -1,0 +1,45 @@
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: JoinConfiguration
+caCertPath: /etc/kubernetes/pki/ca.crt
+controlPlane:
+  # set accordingly - can be regenerated with `kubeadm init phase upload-certs --upload-certs`
+  certificateKey: {{ kube.cert.key }}
+  localAPIEndpoint:
+    advertiseAddress: {{ nodeIp }}
+    bindPort: {{ kube.api.port }}
+discovery:
+  bootstrapToken:
+    apiServerEndpoint: {{ kube.api.vip }}:{{ kube.api.port }}
+    caCertHashes:
+    - {{ kube.cert.hash }}  # set accordingly
+    # set accordingly `kubeadm token create --print-join-command`
+    token: {{ kube.token }}
+  tlsBootstrapToken: {{ kube.token }}
+nodeRegistration:
+  # this is confusing - kubeadm migrate added this again - but afaik it should be configured in the "KubeletConfiguration"
+  #criSocket: unix:///var/run/containerd/containerd.sock
+  imagePullPolicy: IfNotPresent
+  imagePullSerial: true
+  name: {{ nodeName }}
+  taints:
+  # normally master nodes should not be worker nodes too
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/control-plane
+timeouts:
+  controlPlaneComponentHealthCheck: 5m0s
+  discovery: 5m0s
+  etcdAPICall: 5m0s
+  kubeletHealthCheck: 5m0s
+  kubernetesAPICall: 5m0s
+  tlsBootstrap: 5m0s
+  upgradeManifests: 5m0s
+patches:
+  directory: /etc/kubernetes/patches
+---
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+cgroupDriver: systemd
+containerLogMaxSize: 10Mi
+containerLogMaxFiles: 3
+containerRuntimeEndpoint: unix:///run/containerd/containerd.sock
+maxPods: {{ calico.kubelet.extraArgs.maxPods }}

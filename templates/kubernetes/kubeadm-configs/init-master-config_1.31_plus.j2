@@ -1,0 +1,100 @@
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: InitConfiguration
+bootstrapTokens:
+- groups:
+  - system:bootstrappers:kubeadm:default-node-token
+  # generate token via `kubeadm token generate`
+  token: {{ kube.token }}
+  ttl: 24h0m0s
+  usages:
+  - signing
+  - authentication
+localAPIEndpoint:
+  # change accordingly - example 10.12.100.170
+  advertiseAddress: {{ nodeIp }}
+  # default 6443
+  bindPort: {{ kube.api.port }}
+nodeRegistration:
+  # this is confusing - kubeadm migrate added this again - but afaik it should be configured in the "KubeletConfiguration"
+  #criSocket: unix:///var/run/containerd/containerd.sock
+  imagePullPolicy: IfNotPresent
+  imagePullSerial: true
+  # change accordingly
+  name: {{ nodeName }}
+  # normally we do not want master nodes to be worker nodes too
+  taints:
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/control-plane
+timeouts:
+  controlPlaneComponentHealthCheck: 5m0s
+  discovery: 5m0s
+  etcdAPICall: 5m0s
+  kubeletHealthCheck: 5m0s
+  kubernetesAPICall: 5m0s
+  tlsBootstrap: 5m0s
+  upgradeManifests: 5m0s
+patches:
+  directory: /etc/kubernetes/patches
+---
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: ClusterConfiguration
+apiServer:
+  extraArgs:
+  - name: audit-log-maxage
+    value: "3"
+  - name: audit-log-maxbackup
+    value: "3"
+  - name: audit-log-maxsize
+    value: "100"
+  - name: audit-log-path
+    value: /var/log/kubernetes/audit/audit.log
+  - name: audit-policy-file
+    value: /etc/kubernetes/audit-policy.yaml
+  extraVolumes:
+  - hostPath: /etc/kubernetes/audit-policy.yaml
+    mountPath: /etc/kubernetes/audit-policy.yaml
+    name: audit
+    pathType: File
+    readOnly: true
+  - hostPath: /var/log/kubernetes/audit/
+    mountPath: /var/log/kubernetes/audit/
+    name: audit-log
+    pathType: DirectoryOrCreate
+caCertificateValidityPeriod: 87600h0m0s
+certificateValidityPeriod: 8760h0m0s
+certificatesDir: /etc/kubernetes/pki
+# set pretty cluster-name
+clusterName: {{ cluster.name }}
+controlPlaneEndpoint: {{ kube.api.vip }}:{{ kube.api.port }}
+controllerManager:
+  extraArgs:
+  - name: node-cidr-mask-size
+    value: "{{ calico.tigera.blockSize }}"
+dns:
+  #imageRepository: registry.k8s.io/coredns  # default
+  imageRepository: {{ kube.image.repository }}/coredns
+encryptionAlgorithm: RSA-2048
+etcd:
+  local:
+    dataDir: /var/lib/etcd
+#imageRepository: registry.k8s.io  # check that this is correct - default
+imageRepository: {{ kube.image.repository }}
+# change accordingly
+kubernetesVersion: {{ kube.version }}
+networking:
+  dnsDomain: cluster.local
+  # also used on our rancher-clusters - default 10.42.0.0/16
+  podSubnet: {{ kube.pod.subnet }}
+  # also used on our rancher-clusters - default 10.43.0.0/16
+  serviceSubnet: {{ kube.service.subnet }}
+proxy: {}
+scheduler: {}
+---
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+# some general configs we want and need for kubelet
+cgroupDriver: systemd
+containerLogMaxSize: 10Mi
+containerLogMaxFiles: 3
+containerRuntimeEndpoint: unix:///run/containerd/containerd.sock
+maxPods: {{ calico.kubelet.extraArgs.maxPods }}

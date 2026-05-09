@@ -1,0 +1,28 @@
+# created via `kubeadm config print join-defaults` and adapted for joining as worker
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: JoinConfiguration
+caCertPath: /etc/kubernetes/pki/ca.crt
+discovery:
+  bootstrapToken:
+    apiServerEndpoint: {{ kube.api.vip }}:{{ kube.api.port }}
+    token: {{ kube.token }}
+    caCertHashes:
+    - {{ kube.cert.hash }}
+  timeout: 5m0s
+  tlsBootstrapToken: {{ kube.token }}
+nodeRegistration:
+  # deprecated now in kubelet-config
+  #criSocket: unix:///run/containerd/containerd.sock
+  name: {{ nodeName }}
+  #kubeletExtraArgs:
+  #  maxPods: "{{ calico.kubelet.extraArgs.maxPods }}"  # seems not to work anymore
+patches:
+  directory: /etc/kubernetes/patches
+---
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+cgroupDriver: systemd
+containerLogMaxSize: 10Mi
+containerLogMaxFiles: 3
+containerRuntimeEndpoint: unix:///run/containerd/containerd.sock
+maxPods: {{ calico.kubelet.extraArgs.maxPods }}

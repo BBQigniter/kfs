@@ -1,0 +1,75 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kube-vip
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: kube-vip
+    app.kubernetes.io/component: control-plane-vip
+spec:
+  containers:
+  - args:
+    - manager
+    env:
+    - name: vip_arp
+      value: "true"
+    - name: port
+      value: "{{ kube.api.port }}"
+    - name: vip_interface
+      # change accordingly
+      value: "{{ nodeInterface }}"
+    - name: vip_subnet
+      value: "32"
+    - name: cp_enable
+      value: "true"
+    - name: cp_namespace
+      value: kube-system
+    - name: vip_ddns
+      value: "false"
+# we will use an own daemonset-setup for service-loadbalancing
+#    - name: svc_enable
+#      value: "true"
+#    - name: svc_election
+#      value: "true"
+    - name: vip_leaderelection
+      value: "true"
+    - name: vip_leaseduration
+      value: "5"
+    - name: vip_renewdeadline
+      value: "3"
+    - name: vip_retryperiod
+      value: "1"
+    - name: address
+      # example 10.12.100.175
+      value: "{{ kube.api.vip }}"
+    - name: prometheus_server
+      value: ":2112"
+    # example ghcr.io/kube-vip/kube-vip:v0.8.2
+    image: "{{ kubeVip.image.path }}"
+    imagePullPolicy: Always
+    name: kube-vip
+    resources: {}
+    securityContext:
+      capabilities:
+        add:
+        - NET_ADMIN
+        - NET_RAW
+    volumeMounts:
+    - mountPath: /etc/kubernetes/admin.conf
+      name: kubeconfig
+  # if Kubernetes v1.29 is used, make sure to use v1.29.7, 
+  # because some previous version had issues with this
+  hostAliases:
+  - hostnames:
+    - kubernetes
+    ip: 127.0.0.1
+  hostNetwork: true
+  volumes:
+  - hostPath:
+      # use super-admin.conf for Kubernetes v1.29+ on the init-master
+      # should be switched back to admin.conf after cluster is up and running
+      # for any other master node that is joined, use the normal `admin.conf`
+      # path: /etc/kubernetes/super-admin.conf
+      path: /etc/kubernetes/admin.conf
+    name: kubeconfig
+

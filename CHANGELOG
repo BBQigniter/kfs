@@ -1,0 +1,25 @@
+2024-10-29 - initial commit
+2024-11-27 - added feature to list nodes of a cluster (simple `kubectl get nodes -o wide`)
+             added feature to upgrade Tigera-Operator/Calico
+             enable audit-logging for default, when creating clusters
+2025-01-29 - fixed package installation to use proper repos
+             fixed upgrade-cluster procedure because of problems starting with Kubernetes 1.30 -> 1.31
+             added few more log lines to make it clearer what's happening
+             fixed how containerd's `config.toml` file is created and edited
+             added compatibility for `dnf5`
+2025-06-06 - added new templates for kube-vip version >=0.9 and kubernetes version >= 1.31
+             added version check for kube-vip when upgrading and creating a cluster to know which template to use
+             added version check for calico-upgrade when upgrading and creating a cluster
+             added version check to use correct kubernetes/kubeadm templates for creating a cluster
+             added version check to use correct kubernetes/kubeadm templates for adding a node to a cluster
+2025-07-02 - added `check_swap, check_modprobe, check_sysctl, check_containerd` to `addNode.py`
+             added option to set garbage collection config parameters for kubelet on selected nodes  
+                 the folder `/etc/kubernetes/patches` is being created anyway even if no patch is added to the node
+                 since we added the corresponding config-parameter to the init-/join-files
+             resetting a node now also deletes the `/etc/kubernetes`-directory!
+             changed all timeout-settings in "plus"-init and join-templates to 5 minutes
+2025-07-14 - removed "unattended-mode" from `kubeadm upgrade plan` because there is currently no nice way to check
+                 case if there are really no manual changes needed.
+2025-08-08 - disabled draining for one-node-clusters if script called with `--cluster-ugprade` as this may fail and
+                 might have strange effects
+2026-05-02 - reworked how the output of all commands is shown on console - it's now streamed nearly live

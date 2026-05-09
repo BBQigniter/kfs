@@ -1,0 +1,89 @@
+cluster:
+  name: "kubernetes"
+dnf-repo:
+  # if server is allowed to access external repos, we can upload the repo-file if needed
+  # TODO: not implemented yet - also most of our servers won't be able to use this
+  upload: False
+kube:
+  version: "1.29.6"
+  image:
+    # default registry.k8s.io
+    repository: registry.k8s.io
+  api:
+    vip: "192.168.100.181"
+    port: "8443"
+  service:
+    subnet: "10.43.0.0/16"
+  pod:
+    subnet: "10.42.0.0/16"
+calico:
+  tigera:
+    version: "v3.30.1"
+    # default is actually "docker.io" for the calico-images and "quay.io" for the tigera-operator
+    # the slash at the end is needed!
+    registry: "quay.io/"
+    # sets default blocksize for a node for podCIDR
+    # in case more pods could be handled by a node, set for example 23 and edit kubec-controller
+    # and kubelet start parameters
+    # default 24 - allows max of about 255 pods on one node - but maxPods is default at 110 because
+    # kubernetes needs a certain amount of free IPs so the scheduler can handle everything
+    # if you want to handle for example 250 pods per node, set blockSize to 23
+    #
+    # this value will also be used for the controllerManager's "node-cird-mask-size" setting
+    # TODO: add link describing this in detail
+    blockSize: "24"
+  kubelet:
+    extraArgs:
+      # default for 24 is 110 - with blocksize 23 you can set this for example to 250
+      maxPods: "110"
+# If you add a cluster where kube-vip is not used for/on control-plane nodes - just add some dummy entry for now
+# DO NOT EXECUTE --upgrade-kube-vip ;)
+# TODO: must be somehow disabled if a keepalived-cluster was added for managing via KFS
+kubeVip:
+  image:
+    path: "ghcr.io/kube-vip/kube-vip:v0.8.9"  # default
+nodes:
+  # mark one node with init-master because this is the only one with `super-admin.conf` with version 1.29+
+  - nodeName: "test-knode-1"
+    nodeIp: "192.168.100.140"
+    nodeInterface: "enp0s3"
+    type: "init-master+worker"
+    sshUser: "root"
+    sshKey: "/home/clemens/.ssh/id_ed25519"
+    nodeLabels:
+      # some node lables for Rancher detecting correct node role. Rancher expects controlplane instead of control-plane to detect this role.
+      - "node-role.kubernetes.io/controlplane=true"
+      - "node-role.kubernetes.io/etcd=true"
+      - "cluster=some-name"
+      - "node.kubernetes.io/exclude-from-external-load-balancers-"
+    # the scripts should be placed in the "additional_scripts" directory
+#    upgradeCheckScripts:
+#      - scriptDescription: "A script that will initially fail - edit it when you want to continue"
+#        scriptPath: "test-script/check_test_1.sh"
+#        scriptParameters: 
+#          - "--arg1 test-parameter-1"
+#          - "--arg2 test-parameter-2"
+#      - scriptDescription: "A script that will initially retun OK"
+#        scriptPath: "test-script/check_test_2.sh"
+  # mark one node with init-master because this is the only one with `super-admin.conf` with version 1.29+
+  - nodeName: "test-knode-2"
+    nodeIp: "192.168.100.132"
+    nodeInterface: "enp0s3"
+    type: "master+worker"
+    sshUser: "root"
+    sshKey: "/home/clemens/.ssh/id_ed25519"
+    nodeLabels:
+      # some node lables for Rancher detecting correct node role. Rancher expects controlplane instead of control-plane to detect this role.
+      - "node-role.kubernetes.io/controlplane=true"
+      - "node-role.kubernetes.io/etcd=true"
+      - "cluster=some-name"
+      - "node.kubernetes.io/exclude-from-external-load-balancers-"
+    # the scripts should be placed in the "additional_scripts" directory
+#    upgradeCheckScripts:
+#      - scriptDescription: "A script that will initially fail - edit it when you want to continue"
+#        scriptPath: "test-script/check_test_1.sh"
+#        scriptParameters:
+#          - "--arg1 test-parameter-1"
+#          - "--arg2 test-parameter-2"
+#      - scriptDescription: "A script that will initially retun OK"
+#        scriptPath: "test-script/check_test_2.sh"

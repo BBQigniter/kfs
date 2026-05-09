@@ -1,0 +1,30 @@
+apiVersion: audit.k8s.io/v1
+kind: Policy
+metadata:
+  creationTimestamp: null
+omitStages:
+- RequestReceived
+rules:
+- level: RequestResponse
+  resources:
+  - resources:
+    - configmaps
+    - daemonsets
+    - deployments
+    - ingressclasses
+    - ingresses
+    - namespaces
+    - nodes
+    - persistentvolumes
+    - persistentvolumeclaims
+    - pods
+    - replicasets
+    - secrets
+    - services
+    - statefulsets
+    - storageclasses
+  verbs:
+  - create
+  - delete
+  - patch
+  - update

@@ -1,0 +1,7 @@
+{% if kubelet.garbageCollection == "normal" %}
+imageGCHighThresholdPercent: 85
+imageGCLowThresholdPercent: 80
+{% elif kubelet.garbageCollection == "early" %}
+imageGCHighThresholdPercent: 75
+imageGCLowThresholdPercent: 70
+{% endif %}

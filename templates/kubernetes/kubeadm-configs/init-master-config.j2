@@ -1,0 +1,83 @@
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: InitConfiguration
+bootstrapTokens:
+- groups:
+  - system:bootstrappers:kubeadm:default-node-token
+  # generate token via `kubeadm token generate`
+  token: {{ kube.token }}
+  ttl: 24h0m0s
+  usages:
+  - signing
+  - authentication
+localAPIEndpoint:
+  # change accordingly - example 10.12.100.170
+  advertiseAddress: {{ nodeIp }}
+  # default 6443
+  bindPort: {{ kube.api.port }}
+nodeRegistration:
+  # deprecated now in kubelet-config
+  #criSocket: unix:///run/containerd/containerd.sock
+  imagePullPolicy: IfNotPresent
+  # change accordingly
+  name: {{ nodeName }}
+  #kubeletExtraArgs:
+  #  maxPods: "{{ calico.kubelet.extraArgs.maxPods }}"
+  taints:  # normally we do not want master nodes to be worker nodes too
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/control-plane
+patches:
+  directory: /etc/kubernetes/patches
+---
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: ClusterConfiguration
+apiServer:
+  timeoutForControlPlane: 4m0s
+  extraArgs:
+    "audit-policy-file": "/etc/kubernetes/audit-policy.yaml"
+    "audit-log-path": "/var/log/kubernetes/audit/audit.log"
+    "audit-log-maxage": "3"
+    "audit-log-maxbackup": "3"
+    "audit-log-maxsize": "100"
+  extraVolumes:
+    - name: "audit"
+      hostPath: "/etc/kubernetes/audit-policy.yaml"
+      mountPath: "/etc/kubernetes/audit-policy.yaml"
+      readOnly: true
+      pathType: File
+    - name: "audit-log"
+      hostPath: "/var/log/kubernetes/audit/"
+      mountPath: "/var/log/kubernetes/audit/"
+      readOnly: false
+      pathType: DirectoryOrCreate
+certificatesDir: /etc/kubernetes/pki
+# set a pretty cluster-name
+clusterName: {{ cluster.name }}
+controlPlaneEndpoint: {{ kube.api.vip }}:{{ kube.api.port }}
+controllerManager:
+  extraArgs:
+    "node-cidr-mask-size": "{{ calico.tigera.blockSize }}"
+etcd:
+  local:
+    dataDir: /var/lib/etcd
+#imageRepository: registry.k8s.io  # check that this is correct - default
+imageRepository: {{ kube.image.repository }}
+dns:
+  imageRepository: {{ kube.image.repository }}/coredns
+# change accordingly
+kubernetesVersion: {{ kube.version }}
+networking:
+  dnsDomain: cluster.local
+  # also used on our rancher-clusters - default 10.43.0.0/16
+  serviceSubnet: {{ kube.service.subnet }}
+  # also used on our rancher-clusters - 10.42.0.0/16
+  podSubnet: {{ kube.pod.subnet }}
+scheduler: {}
+---
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+# some general configs we want and need for kubelet
+cgroupDriver: systemd
+containerLogMaxSize: 10Mi
+containerLogMaxFiles: 3
+containerRuntimeEndpoint: unix:///run/containerd/containerd.sock
+maxPods: {{ calico.kubelet.extraArgs.maxPods }}
